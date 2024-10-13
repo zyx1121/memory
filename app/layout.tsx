@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+// Import the font
+import { Fira_Code } from 'next/font/google'
+
+// Initialize the font
+const firaCode = Fira_Code({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: "🐟",
@@ -14,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-TW" suppressHydrationWarning>
-      <body className="antialiased">
+      <body className={`antialiased ${firaCode.className}`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
