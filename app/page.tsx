@@ -148,64 +148,73 @@ export default function Home() {
   }
 
   return (
-    <main className='w-dvw h-dvh relative'>
-      <div ref={mapRef} className="w-full h-full" />
-      <AnimatePresence>
-        {selectedCluster && (
-          <motion.div
-            className="absolute inset-0 flex items-center justify-center z-10 bg-black bg-opacity-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleClosePhoto}
-          >
+    <>
+      <main className='w-dvw h-dvh relative p-4'>
+        <div ref={mapRef} className="w-full h-full rounded-xl" />
+        <AnimatePresence>
+          {selectedCluster && (
             <motion.div
-              className="relative w-[90vw] max-w-4xl max-h-[90vh] bg-white rounded-xl overflow-hidden"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.3 }}
-              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-0 flex items-center justify-center z-10 bg-black bg-opacity-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleClosePhoto}
             >
-              <div className="w-full h-full flex items-center justify-center">
-                {imageLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-                    <LoadingSpinner />
-                  </div>
-                )}
-                <motion.div
-                  key={currentPhotoIndex}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full h-full flex items-center justify-center"
-                >
-                  <Image
-                    src={selectedCluster[currentPhotoIndex].src}
-                    alt={`Photo ${currentPhotoIndex + 1}`}
-                    width={selectedCluster[currentPhotoIndex].width}
-                    height={selectedCluster[currentPhotoIndex].height}
-                    className="object-contain w-full h-full"
-                    onLoad={() => setImageLoading(false)}
-                    placeholder="blur"
-                    blurDataURL={selectedCluster[currentPhotoIndex].thumbnail}
-                    priority={currentPhotoIndex === 0}
+              <motion.div
+                className="relative w-[90vw] max-w-4xl max-h-[90vh] bg-white rounded-xl overflow-hidden"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", duration: 0.3 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="w-full h-full flex items-center justify-center">
+                  {imageLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                      <LoadingSpinner />
+                    </div>
+                  )}
+                  <motion.div
+                    key={currentPhotoIndex}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full h-full flex items-center justify-center"
+                  >
+                    <Image
+                      src={selectedCluster[currentPhotoIndex].src}
+                      alt={`Photo ${currentPhotoIndex + 1}`}
+                      width={selectedCluster[currentPhotoIndex].width}
+                      height={selectedCluster[currentPhotoIndex].height}
+                      className="object-contain w-full h-full"
+                      onLoad={() => setImageLoading(false)}
+                      placeholder="blur"
+                      blurDataURL={selectedCluster[currentPhotoIndex].thumbnail}
+                      priority={currentPhotoIndex === 0}
+                    />
+                  </motion.div>
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1/2 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); handlePrevPhoto(); }}
                   />
-                </motion.div>
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-1/2 cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); handlePrevPhoto(); }}
-                />
-                <div
-                  className="absolute right-0 top-0 bottom-0 w-1/2 cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); handleNextPhoto(); }}
-                />
-              </div>
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1/2 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); handleNextPhoto(); }}
+                  />
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </main>
+          )}
+        </AnimatePresence>
+      </main>
+      <footer className="z-99 fixed bottom-4 right-4 w-80 h-12 bg-background rounded-tl-3xl hidden sm:block">
+        <div className="absolute bottom-0 -left-8 w-8 h-4 bg-transparent rounded-br-xl shadow-[1rem_0_0_0_theme(colors.background)]"></div>
+        <div className="absolute -top-4 right-0 w-8 h-4 bg-transparent rounded-br-xl shadow-[1rem_0_0_0_theme(colors.background)]"></div>
+        <div className="absolute bottom-0 right-0 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-red-500 rounded-xl flex items-center justify-center text-white">
+          © {new Date().getFullYear()} Loki
+        </div>
+      </footer>
+    </>
   );
 }
