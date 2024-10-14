@@ -1,17 +1,9 @@
+import { PhotoData } from '@/types/photo';
 import ExifReader from 'exifreader';
 import fs from 'fs/promises';
 import { NextResponse } from 'next/server';
 import path from 'path';
 import sharp from 'sharp';
-
-interface PhotoData {
-    src: string;
-    thumbnail: string;
-    lat: number;
-    lng: number;
-    width: number;
-    height: number;
-}
 
 // 定義一個函數來檢查文件是否為圖片
 function isImageFile(filename: string): boolean {
@@ -60,46 +52,57 @@ export async function GET() {
                 try {
                     tags = await ExifReader.load(buffer);
                 } catch (error) {
-                    console.error(`Error reading EXIF data for ${file}:`, error);
-                    // 如果無法讀取 EXIF 數據，使用默認值
-                    return {
-                        src: `/photos/${file}`,
-                        thumbnail: `/photos/${file}`,
-                        lat: 25.0330,
-                        lng: 121.5654,
-                        width: metadata.width,
-                        height: metadata.height,
-                    };
+                    console.error(`讀取 ${file} 的 EXIF 數據時出錯:`, error);
+                    return createDefaultPhotoData(file, metadata);
                 }
 
-                let lat = 25.0330;  // 默認值，可以根據需要調整
-                let lng = 121.5654; // 默認值，可以根據需要調整
-
-                if (tags.GPSLatitude && tags.GPSLongitude) {
-                    lat = parseFloat(tags.GPSLatitude.description);
-                    lng = parseFloat(tags.GPSLongitude.description);
-                }
+                const { lat, lng } = getGPSCoordinates(tags);
 
                 return {
                     src: `/photos/${file}`,
-                    thumbnail: `/photos/${file}`,
+                    thumbnail: `/photos/thumbnails/${file}`,
+                    filename: file,
                     lat,
                     lng,
                     width: metadata.width,
                     height: metadata.height,
-                };
+                } as PhotoData;
             } catch (error) {
-                console.error(`Error processing file ${file}:`, error);
-                // 如果處理文件時出錯，返回 null
+                console.error(`處理文件 ${file} 時出錯:`, error);
                 return null;
             }
         })
     );
 
-    // 過濾掉 null 值（處理失敗的圖片）
     const validPhotoData = photoData.filter(photo => photo !== null) as PhotoData[];
-
     const clusteredPhotos = clusterPhotos(validPhotoData, 0.005);
 
     return NextResponse.json(clusteredPhotos);
+}
+
+function createDefaultPhotoData(file: string, metadata: sharp.Metadata): PhotoData {
+    return {
+        src: `/photos/${file}`,
+        thumbnail: `/photos/thumbnails/${file}`,
+        filename: file,
+        lat: 25.0330,
+        lng: 121.5654,
+        width: metadata.width || 0,
+        height: metadata.height || 0,
+    };
+}
+
+interface ExifTags {
+    GPSLatitude?: { description: string };
+    GPSLongitude?: { description: string };
+}
+
+function getGPSCoordinates(tags: ExifTags): { lat: number; lng: number } {
+    if (tags.GPSLatitude && tags.GPSLongitude) {
+        return {
+            lat: parseFloat(tags.GPSLatitude.description),
+            lng: parseFloat(tags.GPSLongitude.description),
+        };
+    }
+    return { lat: 25.0330, lng: 121.5654 };
 }
