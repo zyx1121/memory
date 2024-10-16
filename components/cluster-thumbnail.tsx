@@ -10,24 +10,15 @@ interface ClusterThumbnailProps {
 export const ClusterThumbnail = React.memo(function ClusterThumbnail({ thumbnails, size }: ClusterThumbnailProps) {
   const mainSize = size * 1.5;
   const smallSize = size;
-  const borderWidth = 2;
+  const borderWidth = 1;
 
   if (thumbnails.length === 0) {
     return <div>No images</div>;
   }
 
-  const getScaledDimensions = (width: number, height: number, maxSize: number) => {
-    const aspectRatio = width / height;
-    if (width > height) {
-      return { width: maxSize, height: Math.round(maxSize / aspectRatio) };
-    } else {
-      return { width: Math.round(maxSize * aspectRatio), height: maxSize };
-    }
-  };
-
   const mainDimensions = getScaledDimensions(thumbnails[0].width, thumbnails[0].height, mainSize - borderWidth * 2);
 
-  const ThumbnailImage = ({ thumbnail, dimensions, alt }: { thumbnail: PhotoData; dimensions: { width: number; height: number }; alt: string }) => (
+  const ThumbnailImage = ({ thumbnail, dimensions, alt }: ThumbnailImageProps) => (
     <Image
       src={thumbnail.thumbnail}
       alt={alt}
@@ -40,47 +31,69 @@ export const ClusterThumbnail = React.memo(function ClusterThumbnail({ thumbnail
     />
   );
 
+  // Extract ThumbnailContainer component
+  const ThumbnailContainer = ({ thumbnail, size, position }: ThumbnailContainerProps) => (
+    <div style={{ position: 'absolute', ...position }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: `${borderWidth}px solid white` }}>
+        {thumbnail?.thumbnail ? (
+          <ThumbnailImage
+            thumbnail={thumbnail}
+            dimensions={getScaledDimensions(thumbnail.width, thumbnail.height, size - borderWidth * 2)}
+            alt={`Thumbnail ${position.toString()}`}
+          />
+        ) : (
+          <div className="w-full h-full bg-background flex items-center justify-center">No image</div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ width: mainSize, height: mainSize, position: 'relative' }}>
       <div className="rounded-xl overflow-hidden" style={{ border: `${borderWidth}px solid white` }}>
         {thumbnails[0]?.thumbnail ? (
           <ThumbnailImage thumbnail={thumbnails[0]} dimensions={mainDimensions} alt="Main thumbnail" />
         ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center">No image</div>
+          <div className="w-full h-full bg-background flex items-center justify-center">No image</div>
         )}
       </div>
       {thumbnails.length > 1 && (
-        <div style={{ position: 'absolute', right: -smallSize / 2, bottom: -smallSize / 2 }}>
-          <div className="rounded-xl overflow-hidden" style={{ border: `${borderWidth}px solid white` }}>
-            {thumbnails[1]?.thumbnail ? (
-              <ThumbnailImage
-                thumbnail={thumbnails[1]}
-                dimensions={getScaledDimensions(thumbnails[1].width, thumbnails[1].height, smallSize - borderWidth * 2)}
-                alt="Secondary thumbnail"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-200 flex items-center justify-center">No image</div>
-            )}
-          </div>
-        </div>
+        <ThumbnailContainer
+          thumbnail={thumbnails[1]}
+          size={smallSize}
+          position={{ right: -smallSize / 2, bottom: -smallSize / 2 }}
+        />
       )}
       {thumbnails.length > 2 && (
-        <div style={{ position: 'absolute', left: -smallSize / 2, bottom: -smallSize / 2 }}>
-          <div className="rounded-xl overflow-hidden" style={{ border: `${borderWidth}px solid white` }}>
-            {thumbnails[2]?.thumbnail ? (
-              <ThumbnailImage
-                thumbnail={thumbnails[2]}
-                dimensions={getScaledDimensions(thumbnails[2].width, thumbnails[2].height, smallSize - borderWidth * 2)}
-                alt="Tertiary thumbnail"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-200 flex items-center justify-center">No image</div>
-            )}
-          </div>
-        </div>
+        <ThumbnailContainer
+          thumbnail={thumbnails[2]}
+          size={smallSize}
+          position={{ left: -smallSize / 2, bottom: -smallSize / 2 }}
+        />
       )}
     </div>
   );
 });
+
+const getScaledDimensions = (width: number, height: number, maxSize: number) => {
+  const aspectRatio = width / height;
+  if (width > height) {
+    return { width: maxSize, height: Math.round(maxSize / aspectRatio) };
+  } else {
+    return { width: Math.round(maxSize * aspectRatio), height: maxSize };
+  }
+};
+
+interface ThumbnailImageProps {
+  thumbnail: PhotoData;
+  dimensions: { width: number; height: number };
+  alt: string;
+}
+
+interface ThumbnailContainerProps {
+  thumbnail: PhotoData;
+  size: number;
+  position: { [key: string]: number };
+}
 
 ClusterThumbnail.displayName = 'ClusterThumbnail';

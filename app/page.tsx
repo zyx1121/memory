@@ -25,10 +25,8 @@ export default function Home() {
         }
         const fetchedClusters = await response.json();
         setPhotoClusters(fetchedClusters);
-        setIsLoading(false);
       } catch (error) {
         console.error('加載照片時出錯：', error);
-        setIsLoading(false);
       }
     };
 
@@ -77,6 +75,7 @@ export default function Home() {
 
     if (photoClusters.length > 0) {
       initMap();
+      setTimeout(() => setIsLoading(false), 500); // Add a small delay to ensure smooth transition
     }
   }, [photoClusters]);
 
@@ -98,11 +97,8 @@ export default function Home() {
 
   useEffect(() => {
     if (isClosing) {
-      const timer = setTimeout(() => {
-        setSelectedCluster(null);
-        setIsClosing(false);
-      }, 300);
-      return () => clearTimeout(timer);
+      setSelectedCluster(null);
+      setIsClosing(false);
     }
   }, [isClosing]);
 
@@ -119,24 +115,26 @@ export default function Home() {
     }
   }, [selectedCluster]);
 
-  if (isLoading) {
-    return (
-      <div className="w-dvw h-dvh flex items-center justify-center">
-        <div className="flex items-center justify-center">
-          <motion.div
-            className="w-16 h-16 border-t-2 border-white rounded-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            className="w-dvw h-dvh flex items-center justify-center fixed inset-0 z-50 bg-background"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <motion.div
+              className="w-32 h-32 border-t-2 border-white rounded-full blur-lg"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <main className='w-dvw h-dvh relative p-4'>
-        <div ref={mapRef} className="w-full h-full rounded-xl" />
+        <div ref={mapRef} className="w-full h-full border border-input rounded-xl" />
         <AnimatePresence>
           {selectedCluster && (
             <motion.div
@@ -147,7 +145,7 @@ export default function Home() {
               onClick={handleClosePhoto}
             >
               <motion.div
-                className="relative w-[90vw] max-w-4xl max-h-[90vh] bg-white rounded-xl overflow-hidden"
+                className="relative max-w-4xl max-h-[90vh] border border-input rounded-xl overflow-hidden"
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
@@ -190,8 +188,8 @@ export default function Home() {
       </main>
       <footer className="z-99 fixed bottom-4 right-4 w-80 h-12 bg-background rounded-tl-3xl hidden sm:block">
         <div className="absolute bottom-0 -left-8 w-8 h-4 bg-transparent rounded-br-xl shadow-[1rem_0_0_0_theme(colors.background)]"></div>
-        <div className="absolute -top-4 right-0 w-8 h-4 bg-transparent rounded-br-xl shadow-[1rem_0_0_0_theme(colors.background)]"></div>
-        <div className="absolute bottom-0 right-0 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-gray-700 rounded-xl flex items-center justify-center text-white">
+        <div className="absolute -top-8 right-0 w-4 h-8 bg-transparent rounded-br-xl shadow-[0_1rem_0_0_theme(colors.background)]"></div>
+        <div className="absolute bottom-0 right-0 w-[calc(100%-1rem)] h-[calc(100%-1rem)] border border-input rounded-xl flex items-center justify-center text-foreground">
           © {new Date().getFullYear()} Loki
         </div>
       </footer>
