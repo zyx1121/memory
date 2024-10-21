@@ -5,7 +5,7 @@ import { PhotoData } from '@/types/photo';
 import { Loader } from '@googlemaps/js-api-loader';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 export default function Home() {
@@ -15,23 +15,54 @@ export default function Home() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
   const [isClosing, setIsClosing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+
+  const preloadImage = useCallback((src: string) => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = src;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const loadPhotos = async () => {
       try {
         const response = await fetch('/api/photos');
         if (!response.ok) {
-          throw new Error(`HTTP 錯誤！狀態：${response.status}`);
+          throw new Error(`Error: ${response.status}`);
         }
         const fetchedClusters = await response.json();
         setPhotoClusters(fetchedClusters);
+
+        const preloadPromises = fetchedClusters.flat().flatMap((photo: PhotoData) => [
+          preloadImage(photo.thumbnail),
+          preloadImage(photo.src)
+        ]);
+
+        await Promise.all(preloadPromises);
+        setIsLoading(false);
       } catch (error) {
-        console.error('加載照片時出錯：', error);
+        console.error('Error loading photos:', error);
+        setIsLoading(false);
       }
     };
 
     loadPhotos();
-  }, []);
+  }, [preloadImage]);
 
   useEffect(() => {
     const initMap = async () => {
@@ -50,14 +81,13 @@ export default function Home() {
         mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID as string,
       });
 
-      // 添加照片標記
       photoClusters.forEach((cluster) => {
         const firstPhoto = cluster[0];
-        const thumbnails: PhotoData[] = cluster.slice(0, 3);
+        const thumbnails: PhotoData[] = cluster.slice(0, 5);
 
         const markerElement = document.createElement('div');
         const root = createRoot(markerElement);
-        root.render(<ClusterThumbnail thumbnails={thumbnails} size={60} />);
+        root.render(<ClusterThumbnail thumbnails={thumbnails} size={80} />);
 
         const marker = new AdvancedMarkerElement({
           map,
@@ -75,21 +105,29 @@ export default function Home() {
 
     if (photoClusters.length > 0) {
       initMap();
-      setTimeout(() => setIsLoading(false), 500); // Add a small delay to ensure smooth transition
+      setTimeout(() => setIsLoading(false), 500);
     }
   }, [photoClusters]);
 
-  const handleNextPhoto = () => {
+  const handleNextPhoto = useCallback(() => {
     if (selectedCluster) {
-      setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % selectedCluster.length);
-    }
-  };
+      const nextIndex = (currentPhotoIndex + 1) % selectedCluster.length;
+      setCurrentPhotoIndex(nextIndex);
 
-  const handlePrevPhoto = () => {
-    if (selectedCluster) {
-      setCurrentPhotoIndex((prevIndex) => (prevIndex - 1 + selectedCluster.length) % selectedCluster.length);
+      const nextNextIndex = (nextIndex + 1) % selectedCluster.length;
+      preloadImage(selectedCluster[nextNextIndex].src);
     }
-  };
+  }, [selectedCluster, currentPhotoIndex, preloadImage]);
+
+  const handlePrevPhoto = useCallback(() => {
+    if (selectedCluster) {
+      const prevIndex = (currentPhotoIndex - 1 + selectedCluster.length) % selectedCluster.length;
+      setCurrentPhotoIndex(prevIndex);
+
+      const prevPrevIndex = (prevIndex - 1 + selectedCluster.length) % selectedCluster.length;
+      preloadImage(selectedCluster[prevPrevIndex].src);
+    }
+  }, [selectedCluster, currentPhotoIndex, preloadImage]);
 
   const handleClosePhoto = () => {
     setIsClosing(true);
@@ -111,9 +149,45 @@ export default function Home() {
           img.onerror = reject;
           img.src = photo.src;
         })
-      )).catch((error) => console.error('加載選定集群圖片時出錯：', error));
+      )).catch((error) => console.error('Error loading selected cluster photos:', error));
     }
   }, [selectedCluster]);
+
+  const calculateImageSize = (originalWidth: number, originalHeight: number) => {
+    const maxWidth = windowSize.width * 0.8;
+    const maxHeight = windowSize.height * 0.8;
+    const aspectRatio = originalWidth / originalHeight;
+
+    let newWidth = originalWidth;
+    let newHeight = originalHeight;
+
+    if (newWidth > maxWidth) {
+      newWidth = maxWidth;
+      newHeight = newWidth / aspectRatio;
+    }
+
+    if (newHeight > maxHeight) {
+      newHeight = maxHeight;
+      newWidth = newHeight * aspectRatio;
+    }
+
+    return { width: newWidth, height: newHeight };
+  };
+
+  useEffect(() => {
+    const preloadOriginalImages = async () => {
+      const allPhotos = photoClusters.flat();
+      for (let i = 0; i < allPhotos.length; i += 10) {
+        await Promise.all(
+          allPhotos.slice(i, i + 10).map(photo => preloadImage(photo.src))
+        );
+      }
+    };
+
+    if (photoClusters.length > 0) {
+      preloadOriginalImages();
+    }
+  }, [photoClusters, preloadImage]);
 
   return (
     <>
@@ -133,8 +207,8 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-      <main className='w-dvw h-dvh relative p-4'>
-        <div ref={mapRef} className="w-full h-full border border-input rounded-xl" />
+      <main className='w-dvw h-dvh relative p-2'>
+        <div ref={mapRef} className="w-full h-full border border-input rounded-lg" />
         <AnimatePresence>
           {selectedCluster && (
             <motion.div
@@ -145,7 +219,7 @@ export default function Home() {
               onClick={handleClosePhoto}
             >
               <motion.div
-                className="relative max-w-4xl max-h-[90vh] border border-input rounded-xl overflow-hidden"
+                className="relative max-w-4xl max-h-[90vh] overflow-hidden"
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
@@ -153,25 +227,37 @@ export default function Home() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="w-full h-full flex items-center justify-center">
-                  <motion.div
-                    key={currentPhotoIndex}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="w-full h-full flex items-center justify-center"
-                  >
-                    <Image
-                      src={selectedCluster[currentPhotoIndex].src}
-                      alt={`照片 ${currentPhotoIndex + 1}`}
-                      width={selectedCluster[currentPhotoIndex].width}
-                      height={selectedCluster[currentPhotoIndex].height}
-                      className="object-contain w-full h-full"
-                      placeholder="blur"
-                      blurDataURL={selectedCluster[currentPhotoIndex].thumbnail}
-                      priority={currentPhotoIndex === 0}
-                    />
-                  </motion.div>
+                  {selectedCluster[currentPhotoIndex] && (
+                    <div className="relative rounded-2xl overflow-hidden shadow-sm bg-white/30 backdrop-blur-sm border transition-shadow duration-300 p-1">
+                      <motion.div
+                        key={currentPhotoIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full h-full flex items-center justify-center"
+                      >
+                        {(() => {
+                          const { width, height } = calculateImageSize(
+                            selectedCluster[currentPhotoIndex].width,
+                            selectedCluster[currentPhotoIndex].height
+                          );
+                          return (
+                            <Image
+                              src={selectedCluster[currentPhotoIndex].src}
+                              alt={`Photo ${currentPhotoIndex + 1}`}
+                              width={width}
+                              height={height}
+                              className="w-full h-full rounded-xl object-contain"
+                              placeholder="blur"
+                              blurDataURL={selectedCluster[currentPhotoIndex].thumbnail}
+                              priority={currentPhotoIndex === 0}
+                            />
+                          );
+                        })()}
+                      </motion.div>
+                    </div>
+                  )}
                   <div
                     className="absolute left-0 top-0 bottom-0 w-1/2 cursor-pointer"
                     onClick={(e) => { e.stopPropagation(); handlePrevPhoto(); }}
@@ -184,12 +270,12 @@ export default function Home() {
               </motion.div>
             </motion.div>
           )}
-        </AnimatePresence>
-      </main>
-      <footer className="z-99 fixed bottom-4 right-4 w-80 h-12 bg-background rounded-tl-3xl hidden sm:block">
-        <div className="absolute bottom-0 -left-8 w-8 h-4 bg-transparent rounded-br-xl shadow-[1rem_0_0_0_theme(colors.background)]"></div>
-        <div className="absolute -top-8 right-0 w-4 h-8 bg-transparent rounded-br-xl shadow-[0_1rem_0_0_theme(colors.background)]"></div>
-        <div className="absolute bottom-0 right-0 w-[calc(100%-1rem)] h-[calc(100%-1rem)] border border-input rounded-xl flex items-center justify-center text-foreground">
+        </AnimatePresence >
+      </main >
+      <footer className="z-99 fixed bottom-2 right-2 w-80 h-8 bg-background rounded-tl-[.75rem] hidden sm:block">
+        <div className="absolute bottom-0 -left-4 w-4 h-4 bg-transparent rounded-br-lg shadow-[.5rem_0_0_0_theme(colors.background)]"></div>
+        <div className="absolute -top-4 right-0 w-4 h-4 bg-transparent rounded-br-lg shadow-[0_.5rem_0_0_theme(colors.background)]"></div>
+        <div className="absolute bottom-0 right-0 w-[calc(100%-.5rem)] h-[calc(100%-.5rem)] border border-input rounded-lg flex items-center justify-center text-muted-foreground text-xs">
           © {new Date().getFullYear()} Loki
         </div>
       </footer>

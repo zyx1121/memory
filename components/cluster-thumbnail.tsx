@@ -8,15 +8,10 @@ interface ClusterThumbnailProps {
 }
 
 export const ClusterThumbnail = React.memo(function ClusterThumbnail({ thumbnails, size }: ClusterThumbnailProps) {
-  const mainSize = size * 1.5;
+  const mainSize = size * 2;
   const smallSize = size;
-  const borderWidth = 1;
 
-  if (thumbnails.length === 0) {
-    return <div>No images</div>;
-  }
-
-  const mainDimensions = getScaledDimensions(thumbnails[0].width, thumbnails[0].height, mainSize - borderWidth * 2);
+  const mainDimensions = getScaledDimensions(thumbnails[0].width, thumbnails[0].height, mainSize - 4);
 
   const ThumbnailImage = ({ thumbnail, dimensions, alt }: ThumbnailImageProps) => (
     <Image
@@ -34,42 +29,29 @@ export const ClusterThumbnail = React.memo(function ClusterThumbnail({ thumbnail
   // Extract ThumbnailContainer component
   const ThumbnailContainer = ({ thumbnail, size, position }: ThumbnailContainerProps) => (
     <div style={{ position: 'absolute', ...position }}>
-      <div className="rounded-xl overflow-hidden" style={{ border: `${borderWidth}px solid white` }}>
-        {thumbnail?.thumbnail ? (
-          <ThumbnailImage
-            thumbnail={thumbnail}
-            dimensions={getScaledDimensions(thumbnail.width, thumbnail.height, size - borderWidth * 2)}
-            alt={`Thumbnail ${position.toString()}`}
-          />
-        ) : (
-          <div className="w-full h-full bg-background flex items-center justify-center">No image</div>
-        )}
+      <div className="relative rounded-2xl overflow-hidden shadow-sm bg-white/30 backdrop-blur-sm border transition-shadow duration-300 p-1"
+        style={{ width: size, height: size }}
+      >
+        <ThumbnailImage thumbnail={thumbnail} dimensions={getScaledDimensions(thumbnail.width, thumbnail.height, size)} alt={`Thumbnail ${position.toString()}`} />
       </div>
     </div>
   );
 
   return (
     <div style={{ width: mainSize, height: mainSize, position: 'relative' }}>
-      <div className="rounded-xl overflow-hidden" style={{ border: `${borderWidth}px solid white` }}>
-        {thumbnails[0]?.thumbnail ? (
-          <ThumbnailImage thumbnail={thumbnails[0]} dimensions={mainDimensions} alt="Main thumbnail" />
-        ) : (
-          <div className="w-full h-full bg-background flex items-center justify-center">No image</div>
-        )}
+      <div className="relative rounded-2xl overflow-hidden shadow-sm bg-white/30 backdrop-blur-sm border transition-shadow duration-300 p-1"
+        style={{ width: mainDimensions.width, height: mainDimensions.height }}
+      >
+        <ThumbnailImage thumbnail={thumbnails[0]} dimensions={mainDimensions} alt="Main thumbnail" />
       </div>
       {thumbnails.length > 1 && (
-        <ThumbnailContainer
-          thumbnail={thumbnails[1]}
-          size={smallSize}
-          position={{ right: -smallSize / 2, bottom: -smallSize / 2 }}
-        />
+        <ThumbnailContainer thumbnail={thumbnails[1]} size={smallSize} position={{ left: -smallSize / 2, bottom: -smallSize / 8 }} />
       )}
       {thumbnails.length > 2 && (
-        <ThumbnailContainer
-          thumbnail={thumbnails[2]}
-          size={smallSize}
-          position={{ left: -smallSize / 2, bottom: -smallSize / 2 }}
-        />
+        <ThumbnailContainer thumbnail={thumbnails[2]} size={smallSize} position={{ left: smallSize / 4, bottom: -smallSize / 4 }} />
+      )}
+      {thumbnails.length > 3 && (
+        <ThumbnailContainer thumbnail={thumbnails[3]} size={smallSize} position={{ left: smallSize, bottom: -smallSize / 6 }} />
       )}
     </div>
   );
